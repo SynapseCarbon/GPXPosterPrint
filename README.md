@@ -21,8 +21,22 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 
 ## Setup
 
-- Edit the config.toml with relevant data including:
+- Clone or grab the files from this repository
+
+Copy config.sample to config.toml and edit it, adding the relevant data including:
     - Path to GPX file
     - Mapbox access token
     - Ride metadata (distance, time etc)
  
+If everything is in the same folder (Python code, config.toml and fonts), you should be able to run 'py GeneratePoster.py'.  The output should look something like:
+```
+Registering typography layers...
+ -> Montserrat-Bold registered successfully.
+ -> Inter-Regular registered successfully.
+Parsing 16.7MB GPX file...
+Success! Unified map tile asset rendered on layout plane.
+
+Completed! Final poster compiled successfully at: cycling_ride_a3_map_poster.pdf
+```
+
+Hopefully you've ended up with a PDF file containing your poster.
