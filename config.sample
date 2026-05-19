@@ -1,0 +1,46 @@
+# Rename to config.toml
+# Insert path to your GPX file
+# Add your own mapbox access token
+# Edit ride_metadata with the number of metrics and their values for your activity
+
+[files]
+gpx_filename = ""
+output_pdf = "cycling_ride_a3_map_poster.pdf"
+
+[mapbox]
+access_token = ""   
+style_id = "harpoon76/cmpch13vp004a01s59u1vg7br"
+#Alternative default Mapbox style (comment / uncomment as needed)
+#style_id = "mapbox/outdoors-v12"
+
+[processing]
+target_points = 800
+
+[ride_metadata]
+title = "Poster Title"
+date = "25 April 2026"
+
+# Dynamic Metrics Grid (Add anywhere from 1 to 6 blocks)
+[[ride_metadata.metrics]]
+value = "127.2km"
+label = "Distance"
+
+[[ride_metadata.metrics]]
+value = "5:03:27"
+label = "Moving Time"
+
+[[ride_metadata.metrics]]
+value = "1,230m"
+label = "Total Ascent"
+
+[[ride_metadata.metrics]]
+value = "25.2km/h"
+label = "Avg Speed"
+
+[[ride_metadata.metrics]]
+value = "65.2km/h"
+label = "Top Speed"
+
+[[ride_metadata.metrics]]
+value = "215W"
+label = "Avg Power"

@@ -5,7 +5,7 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 
 ## Requirements
 
-- Python 3.x (I used Python 3.13) with these packages installed (via pip3):
+- Python 3.x (I used Python 3.14.5) with these packages installed (via pip3):
     - requests
     - reportlab
     - polyline
