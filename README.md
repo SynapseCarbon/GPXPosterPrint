@@ -28,7 +28,7 @@ Copy config.sample to config.toml and edit it, adding the relevant data includin
     - Mapbox access token
     - Ride metadata (distance, time etc)
  
-If everything is in the same folder (Python code, config.toml and fonts), you should be able to run 'py GeneratePoster.py'.  The output should look something like:
+If everything is in the same folder (Python code, config.toml and fonts), you should be able to enter that folder and run ```py GeneratePoster.py```.  The output should look something like:
 ```
 Registering typography layers...
  -> Montserrat-Bold registered successfully.
