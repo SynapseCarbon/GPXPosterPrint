@@ -24,7 +24,10 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 - GPX file and relevant data from your activity
     - The GPX file can be easily exported from Garmin Connect, Strava etc
 
-**Note**: When setting up a Mapbox account (if you don't already have one), you will be asked for credit card details.  There is a free tier for the Static Images API which (currently) provides up to 50,000 requests per month.  In development I've used less than 100 requests, so the chances of you being billed are pretty slim unless you make this availabile publicly and somebody rinses your access token.  Do that at your own peril - protect your access token like a password!
+**Note**: When setting up a Mapbox account (if you don't already have one), you will be asked for credit card details.  There is a free tier for the Static Images API which (currently) provides up to 50,000 requests per month.  In development I've used less than 100 requests, so the chances of you being billed are pretty slim unless you make this project availabile publicly and somebody abuses your access token.
+
+> [!CAUTION]
+> Protect your Mapbox access token like an important password!
 
 ## Setup
 
