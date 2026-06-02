@@ -37,8 +37,8 @@ MAPBOX_ACCESS_TOKEN = config["mapbox"]["access_token"]
 MAPBOX_STYLE_ID = config["mapbox"]["style_id"]
 TARGET_POINTS = config["processing"]["target_points"]
 
-# Extract Core Typography Information
-RIDE_TITLE = config.get("ride_metadata", {}).get("title", "CYCLING POSTER").upper()
+# Extract Activity Information
+RIDE_TITLE = config.get("ride_metadata", {}).get("title", "").upper()
 RIDE_DATE = config.get("ride_metadata", {}).get("date", "").upper()
 
 # Extract Dynamic Metrics List
@@ -52,14 +52,14 @@ def register_custom_fonts():
     """Registers premium fonts for a true gallery match."""
     print("Registering typography layers...")
     try:
-        pdfmetrics.registerFont(TTFont('Montserrat-Bold', 'Montserrat-Bold.ttf'))
+        pdfmetrics.registerFont(TTFont('Montserrat-Bold', './fonts/Montserrat-Bold.ttf'))
         print(" -> Montserrat-Bold registered successfully.")
     except Exception as e:
         print(f" -> ⚠️ Montserrat-Bold.ttf load failed ({e}). Falling back to Helvetica-Bold.")
         pdfmetrics.registerFont(TTFont('Montserrat-Bold', 'Helvetica-Bold'))
 
     try:
-        pdfmetrics.registerFont(TTFont('Inter-Regular', 'Inter-Regular.ttf'))
+        pdfmetrics.registerFont(TTFont('Inter-Regular', './fonts/Inter-Regular.ttf'))
         print(" -> Inter-Regular registered successfully.")
     except Exception as e:
         print(f" -> ⚠️ Inter-Regular.ttf load failed ({e}). Falling back to Helvetica.")
@@ -135,8 +135,6 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
 
 def draw_poster():
     register_custom_fonts()
-    #load_config()
-    #meta = load_metadata(METADATA_FILENAME)
     
     try:
         points = parse_gpx(GPX_FILENAME)
@@ -196,13 +194,12 @@ def draw_poster():
     else:
         print("⚠️ Map background asset failed to load cleanly. Proceeding with layout.")
 
-    # Draw a clean, minimalist outer frame line around the map space
+    # Uncomment the three lines below if you want a border around the map
     #c.setStrokeColor(line_color)
     #c.setLineWidth(1.5)
     #c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
 
     # Elevation Profile Section (y=180 to y=280)
-    #prof_x, prof_y, prof_w, prof_h = 40, 180, width - 80, 100
     prof_x, prof_y, prof_w, prof_h = 40, 180, width - 80, 50
     prof_path = c.beginPath()
     prof_path.moveTo(prof_x, prof_y)
@@ -214,11 +211,10 @@ def draw_poster():
     prof_path.lineTo(prof_x + prof_w, prof_y)
     prof_path.close()
 
-    #c.setFillColor(strava_orange)
-    #c.setStrokeColor(strava_orange)
+    # Use light gray for the elevation profile (change if wanted)
     c.setFillColor(light_gray)
     c.setStrokeColor(light_gray)
-    
+       
     c.setLineWidth(1.5)
     c.drawPath(prof_path, fill=True, stroke=True)
 

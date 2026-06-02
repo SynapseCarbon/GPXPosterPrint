@@ -1,7 +1,7 @@
 # Rename to config.toml
 # Insert path to your GPX file
-# Add your own mapbox access token
-# Edit ride_metadata with the number of metrics and their values for your activity
+# Add your own mapbox access token in [mapbox]-access_token
+# Edit ride_metadata with the number of metrics (1 to 6) and their values for your activity
 
 [files]
 gpx_filename = ""
