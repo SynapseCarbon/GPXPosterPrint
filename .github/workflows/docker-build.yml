@@ -1,37 +1,36 @@
 name: Build and Push to Docker Hub
 
-# Trigger the build every time you push code to the main branch
-# Don't trigger on documentation and .gitignore updates
+# Trigger the build every time code is pushed to the main branch
+# Don't trigger on certain paths (paths-ignore)
 on:
   push:
     branches: [ "main" ]
     paths-ignore:
       - 'README.md'
-      - '**.md'          # Ignores any other markdown files in the repo
-      - '.gitignore'      # Ignores updates to your git ignore list
+      - '**.md'           # Ignores any other markdown files in the repo
+      - '.gitignore'      # Ignores updates to git ignore list
       - 'LICENSE'         # Ignores license updates
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Download your code from GitHub onto the builder runner
+      # Step 1: Download code from GitHub onto the builder runner
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Log into your Docker Hub account securely
+      # Step 2: Log into Docker Hub account
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Step 3: Automatically build the Dockerfile and push it to your repo
+      # Step 3: Automatically build the Dockerfile and push it to the Docker Hub repo
       - name: Build and Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          # Replace 'your_username' and 'myscript' with your exact info
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/gpxposterprint:latest
