@@ -16,6 +16,15 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+# Check if PyMuPDF is available for high-res PNG rendering (PDF>PNG)
+try:
+    import pymupdf  # PyMuPDF
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+
+print(f"GPXPosterPrint started - processing configuration")
+
 # =====================================================================
 # CONFIGURATION
 # =====================================================================
@@ -33,6 +42,7 @@ with open(CONFIG_FILE, "rb") as f:
 # File and Map settings
 GPX_FILENAME = config["files"]["gpx_filename"]
 OUTPUT_PDF = config["files"]["output_pdf"]
+OUTPUT_PNG = os.path.splitext(OUTPUT_PDF)[0] + ".png"
 MAPBOX_ACCESS_TOKEN = config["mapbox"]["access_token"]
 MAPBOX_STYLE_ID = config["mapbox"]["style_id"]
 TARGET_POINTS = config["processing"]["target_points"]
@@ -109,13 +119,50 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
     coord_pairs = [(p[0], p[1]) for p in points]
     encoded_track = polyline.encode(coord_pairs, precision=5)
     safe_polyline = urllib.parse.quote(encoded_track)
+    
+    # Start and finish coordinates for markers
+    start_lon, start_lat = points[0][1], points[0][0]
+    end_lon, end_lat = points[-1][1], points[-1][0]
+
+    # 3. Calculate distance between Start and Finish (Haversine formula in meters)
+    lon1, lat1, lon2, lat2 = map(math.radians, [start_lon, start_lat, end_lon, end_lat])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c_math = 2 * math.asin(math.sqrt(a))
+    distance_meters = 6371000 * c_math  # Radius of Earth in meters
 
     path_styling = f"path-3+e65c00-1({safe_polyline})"
-    safe_style_path = "".join([urllib.parse.quote(c) if c != '/' else c for c in MAPBOX_STYLE_ID])
+
+    # If points are closer than 100 meters, use a unified "Loop" pin
+    if distance_meters < 100:
+        print(f" -> Loop detected ({distance_meters:.1f}m gap). Rendering a single unified marker.")
+        # 'pin-s-bicycle+2b2b2b' -> A sleek, dark gray bicycle pin denoting a closed circuit
+        loop_marker = f"pin-s-bicycle+2b2b2b({start_lon},{start_lat})"
+        complete_overlay = f"{path_styling},{loop_marker}"
+    else:
+        # Point-to-point ride: Render separate Start (Green) and Finish (Red) pins
+        start_marker = f"pin-s-bicycle+2ecc71({start_lon},{start_lat})"
+        finish_marker = f"pin-s-marker+e74c3c({end_lon},{end_lat})"
+        complete_overlay = f"{path_styling},{start_marker},{finish_marker}"
+
+    # Start and finish markers
+    start_marker = f"pin-s-bicycle+2ecc71({start_lon},{start_lat})"
+    finish_marker = f"pin-s-marker+e74c3c({end_lon},{end_lat})"
+
+
+    #safe_style_path = "".join([urllib.parse.quote(c) if c != '/' else c for c in MAPBOX_STYLE_ID])
+
+    complete_overlay = f"{path_styling},{start_marker},{finish_marker}"
+    
+    # Split user account and style key into clean components
+    user_part, style_part = MAPBOX_STYLE_ID.split('/')
+    clean_user = urllib.parse.quote(user_part.strip())
+    clean_style = urllib.parse.quote(style_part.strip())
 
     url = (
-        f"https://api.mapbox.com/styles/v1/{safe_style_path}/static/"
-        f"{path_styling}/"                       
+        f"https://api.mapbox.com/styles/v1/{clean_user}/{clean_style}/static/"
+        f"{complete_overlay}/"                       
         f"{center_lon},{center_lat},{zoom_level},0,0/"  
         f"{req_w}x{req_h}@2x"                     
         f"?attribution=false&logo=false"
@@ -168,12 +215,12 @@ def draw_poster():
     c.rect(0, 0, width, height, fill=True, stroke=False)
 
     # Define Map Container Layout Parameters
-    map_padding = 40
+    map_padding = 15
     render_x = map_padding
     map_w = width - (map_padding * 2)  
     
-    max_top_y = height - 40   
-    render_y = 250            #Was 285
+    max_top_y = height - 15
+    render_y = 285            #Was 285, was 250
     map_h = max_top_y - render_y
 
     # Calculate optimal zoom level
@@ -200,13 +247,47 @@ def draw_poster():
     #c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
 
     # Elevation Profile Section (y=180 to y=280)
-    prof_x, prof_y, prof_w, prof_h = 40, 180, width - 80, 50
+    prof_x, prof_y, prof_w, prof_h = 40, 180, width - 80, 80
+    #prof_x, prof_y, prof_w, prof_h = 80, 210, width - 80, 90
+    #prof_x, prof_y, prof_w, prof_h = 80, 210, width - 160, 110
+
     prof_path = c.beginPath()
     prof_path.moveTo(prof_x, prof_y)
-    num_p = len(eles)
+    # 1. Calculate cumulative distance along the route
+    cum_distances = [0.0]
+    total_dist = 0.0
+    
+    for i in range(1, len(points)):
+        lat1, lon1 = math.radians(points[i-1][0]), math.radians(points[i-1][1])
+        lat2, lon2 = math.radians(points[i][0]), math.radians(points[i][1])
+        
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c_math = 2 * math.asin(math.sqrt(a))
+        r = 6371000  # Earth's radius in meters
+        
+        total_dist += c_math * r
+        cum_distances.append(total_dist)
+
+    # 2. Match Strava's baseline crop (cuts out empty space at the bottom)
+    baseline_offset = min_ele - 20
+
+    # 3. Plot points based on physical distance (X) and true elevation (Y)
     for idx, ele in enumerate(eles):
-        x = prof_x + (idx / (num_p - 1)) * prof_w
-        y = prof_y + (((ele - min_ele) / (max_ele - min_ele if max_ele != min_ele else 1)) * prof_h)
+        # Calculate X based on actual progress along the route, not point index
+        if total_dist > 0:
+            x_ratio = cum_distances[idx] / total_dist
+        else:
+            x_ratio = idx / (len(eles) - 1)
+            
+        x = prof_x + (x_ratio * prof_w)
+        
+        # Calculate Y using linear scaling from our offset baseline
+        clamped_ele = max(baseline_offset, ele)
+        y_ratio = (clamped_ele - baseline_offset) / (max_ele - baseline_offset if max_ele != baseline_offset else 1)
+        y = prof_y + (y_ratio * prof_h)
+        
         prof_path.lineTo(x, y)
     prof_path.lineTo(prof_x + prof_w, prof_y)
     prof_path.close()
@@ -264,7 +345,27 @@ def draw_poster():
 
     c.showPage()
     c.save()
-    print(f"\nCompleted! Final poster compiled successfully at: {OUTPUT_PDF}")
+    print(f"\nPDF poster compiled successfully at: {OUTPUT_PDF}")
+
+    if PYMUPDF_AVAILABLE:
+        print(f"Converting PDF to high-res PNG via PyMuPDF (300 DPI)...")
+        try:
+            doc = pymupdf.open(OUTPUT_PDF)
+            page = doc.load_page(0)  # Load the single page poster
+            
+            # 300 DPI scaling math: 300 DPI / standard 72 points per inch = 4.166x zoom factor
+            zoom_factor = 300 / 72  
+            matrix = pymupdf.Matrix(zoom_factor, zoom_factor)
+            
+            # Render the vector structures to crisp raster pixels
+            pix = page.get_pixmap(matrix=matrix)
+            pix.save(OUTPUT_PNG)
+            print(f"🎉 Generated High-Res Poster Image at: {OUTPUT_PNG}")
+            doc.close()
+        except Exception as e:
+            print(f"⚠️ Image raster conversion failed: {e}")
+    else:
+        print(f"⚠️ PyMuPDF library not available - PNG file not generated")
 
 if __name__ == "__main__":
     draw_poster()
