@@ -16,4 +16,4 @@ COPY GeneratePoster.py .
 COPY fonts/ ./fonts/
 
 # Step 5: Command to run the script when the container starts
-CMD ["python", "GeneratePoster.py"]c
+CMD ["python", "GeneratePoster.py"]
