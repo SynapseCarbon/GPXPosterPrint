@@ -10,8 +10,11 @@ output_pdf = "cycling_ride_a3_map_poster.pdf"
 [mapbox]
 access_token = ""   
 style_id = "harpoon76/cmpch13vp004a01s59u1vg7br"
-#Alternative default Mapbox style (comment / uncomment as needed)
+# Alternative default Mapbox styles (comment / uncomment as needed)
+# https://docs.mapbox.com/api/maps/styles/
 #style_id = "mapbox/outdoors-v12"
+#style_id = "mapbox/dark-v11"
+#style_id = "mapbox/satellite-v9"
 
 [theme]
 map_border = false
