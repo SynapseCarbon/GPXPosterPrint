@@ -53,7 +53,7 @@ with open(CONFIG_FILE, "rb") as f:
 
 # File and Map settings
 GPX_FILENAME = config["files"]["gpx_filename"]
-OUTPUT_PDF = config["files"]["output_pdf"]
+OUTPUT_PDF = config["files"]["output_pdf"].replace(" ","_")
 OUTPUT_PNG = os.path.splitext(OUTPUT_PDF)[0] + ".png"
 MAPBOX_ACCESS_TOKEN = config["mapbox"]["access_token"]
 MAPBOX_STYLE_ID = config["mapbox"]["style_id"]
