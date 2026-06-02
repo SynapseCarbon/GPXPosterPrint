@@ -247,7 +247,7 @@ def draw_poster():
     #c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
 
     # Elevation Profile Section (y=180 to y=280)
-    prof_x, prof_y, prof_w, prof_h = 40, 180, width - 80, 80
+    prof_x, prof_y, prof_w, prof_h = 20, 180, width - 40, 80
     #prof_x, prof_y, prof_w, prof_h = 80, 210, width - 80, 90
     #prof_x, prof_y, prof_w, prof_h = 80, 210, width - 160, 110
 
