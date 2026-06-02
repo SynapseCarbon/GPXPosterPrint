@@ -18,7 +18,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 # Check if PyMuPDF is available for high-res PNG rendering (PDF>PNG)
 try:
-    import pymupdf  # PyMuPDF
+    import pymupdf
     PYMUPDF_AVAILABLE = True
 except ImportError:
     PYMUPDF_AVAILABLE = False
@@ -124,7 +124,7 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
     start_lon, start_lat = points[0][1], points[0][0]
     end_lon, end_lat = points[-1][1], points[-1][0]
 
-    # 3. Calculate distance between Start and Finish (Haversine formula in meters)
+    # Calculate distance between Start and Finish (Haversine formula in meters)
     lon1, lat1, lon2, lat2 = map(math.radians, [start_lon, start_lat, end_lon, end_lat])
     dlon = lon2 - lon1
     dlat = lat2 - lat1
@@ -134,27 +134,18 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
 
     path_styling = f"path-3+e65c00-1({safe_polyline})"
 
-    # If points are closer than 100 meters, use a unified "Loop" pin
+    # If points are closer than 100 meters, use a single unified "Loop" pin
     if distance_meters < 100:
-        print(f" -> Loop detected ({distance_meters:.1f}m gap). Rendering a single unified marker.")
+        print(f" -> Loop detected ({distance_meters:.1f}m gap). Rendering a single start/end marker.")
         # 'pin-s-bicycle+2b2b2b' -> A sleek, dark gray bicycle pin denoting a closed circuit
-        loop_marker = f"pin-s-bicycle+2b2b2b({start_lon},{start_lat})"
+        loop_marker = f"pin-s-star+2b2b2b({start_lon},{start_lat})"
         complete_overlay = f"{path_styling},{loop_marker}"
     else:
         # Point-to-point ride: Render separate Start (Green) and Finish (Red) pins
-        start_marker = f"pin-s-bicycle+2ecc71({start_lon},{start_lat})"
+        start_marker = f"pin-s-star+2ecc71({start_lon},{start_lat})"
         finish_marker = f"pin-s-marker+e74c3c({end_lon},{end_lat})"
         complete_overlay = f"{path_styling},{start_marker},{finish_marker}"
 
-    # Start and finish markers
-    start_marker = f"pin-s-bicycle+2ecc71({start_lon},{start_lat})"
-    finish_marker = f"pin-s-marker+e74c3c({end_lon},{end_lat})"
-
-
-    #safe_style_path = "".join([urllib.parse.quote(c) if c != '/' else c for c in MAPBOX_STYLE_ID])
-
-    complete_overlay = f"{path_styling},{start_marker},{finish_marker}"
-    
     # Split user account and style key into clean components
     user_part, style_part = MAPBOX_STYLE_ID.split('/')
     clean_user = urllib.parse.quote(user_part.strip())

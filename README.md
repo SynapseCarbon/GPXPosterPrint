@@ -3,6 +3,12 @@ Python project to take a GPX recording from an activity (bike ride, run, walk et
 
 As a note: I leant on Google Gemini for some of this project as I know a little bit of Python but wanted to get it working quicker
 
+## Features
+
++ Up to 6 data fields / metrics of your choice at the bottom of the poster
++ If the start & end points are under 100m apart, a single marker is used to mark the start / end point.  Otherwise, both points are marked
++ Uses standard Mapbox map styles, so easy to style the map to your choice of colour, roads, POIs etc
+
 ## Requirements
 
 - Python 3.x (I used Python 3.14.5) with these packages installed (via pip3):
