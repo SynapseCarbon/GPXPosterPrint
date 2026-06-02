@@ -32,6 +32,9 @@ CONFIG_FILE = "config.toml"
 
 #Load configuration from file
 
+if os.path.exists("/app/data"):
+    os.chdir("/app/data")
+
 if not os.path.exists(CONFIG_FILE):
     print(f"❌ ERROR: Configuration file '{CONFIG_FILE}' not found!")
     sys.exit(1)

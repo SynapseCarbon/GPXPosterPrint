@@ -19,4 +19,4 @@ COPY fonts/ ./fonts/
 RUN ln -s /app/data/config.toml /app/config.toml
 
 # Step 5: Command to run the script when the container starts
-CMD ["python", "GeneratePoster.py"]
+CMD ["python", "/app/GeneratePoster.py"]
