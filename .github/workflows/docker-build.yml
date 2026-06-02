@@ -1,9 +1,15 @@
 name: Build and Push to Docker Hub
 
 # Trigger the build every time you push code to the main branch
+# Don't trigger on documentation and .gitignore updates
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+      - '**.md'          # Ignores any other markdown files in the repo
+      - '.gitignore'      # Ignores updates to your git ignore list
+      - 'LICENSE'         # Ignores license updates
 
 jobs:
   build-and-push:
