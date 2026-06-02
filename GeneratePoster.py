@@ -28,6 +28,15 @@ print(f"GPXPosterPrint started - processing configuration")
 # =====================================================================
 # CONFIGURATION
 # =====================================================================
+# 1. Get the absolute directory where GeneratePoster.py actually lives
+# (Inside Docker, this will always be "/app")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 2. Define your font path relative to the script location
+# (This works perfectly both inside Docker AND on your local machine)
+MONTSERRAT_BOLD_PATH = os.path.join(SCRIPT_DIR, "fonts", "Montserrat-Bold.ttf")
+INTER_REGULAR_PATH = os.path.join(SCRIPT_DIR, "fonts", "Inter-Regular.ttf")
+
 CONFIG_FILE = "config.toml"
 
 #Load configuration from file
@@ -73,14 +82,14 @@ def register_custom_fonts():
     """Registers premium fonts for a true gallery match."""
     print("Registering typography layers...")
     try:
-        pdfmetrics.registerFont(TTFont('Montserrat-Bold', './fonts/Montserrat-Bold.ttf'))
+        pdfmetrics.registerFont(TTFont('Montserrat-Bold', MONTSERRAT_BOLD_PATH))
         print(" -> Montserrat-Bold registered successfully.")
     except Exception as e:
         print(f" -> ⚠️ Montserrat-Bold.ttf load failed ({e}). Falling back to Helvetica-Bold.")
         pdfmetrics.registerFont(TTFont('Montserrat-Bold', 'Helvetica-Bold'))
 
     try:
-        pdfmetrics.registerFont(TTFont('Inter-Regular', './fonts/Inter-Regular.ttf'))
+        pdfmetrics.registerFont(TTFont('Inter-Regular', INTER_REGULAR_PATH))
         print(" -> Inter-Regular registered successfully.")
     except Exception as e:
         print(f" -> ⚠️ Inter-Regular.ttf load failed ({e}). Falling back to Helvetica.")
