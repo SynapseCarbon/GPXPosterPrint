@@ -27,7 +27,7 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 **Note**: When setting up a Mapbox account (if you don't already have one), you will be asked for credit card details.  There is a free tier for the Static Images API which (currently) provides up to 50,000 requests per month.  In development I've used less than 100 requests, so the chances of you being billed are pretty slim unless you make this project availabile publicly and somebody abuses your access token.
 
 > [!CAUTION]
-> Protect your Mapbox access token like an important password!
+> Protect your Mapbox access token like an important password!  Do not put in a public repository or share it with the Internet.
 
 ## Setup
 
