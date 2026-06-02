@@ -47,6 +47,11 @@ MAPBOX_ACCESS_TOKEN = config["mapbox"]["access_token"]
 MAPBOX_STYLE_ID = config["mapbox"]["style_id"]
 TARGET_POINTS = config["processing"]["target_points"]
 
+# Poster Theme Settings (with defaults if missing)
+MAP_BORDER = config["theme"]["map_border"]
+TITLE_FONT_COLOUR = HexColor(config["theme"]["title_font"],"#e65c00")
+ELEVATION_COLOUR = HexColor(config["theme"]["elevation_profile"],"#CBCCD0")
+
 # Extract Activity Information
 RIDE_TITLE = config.get("ride_metadata", {}).get("title", "").upper()
 RIDE_DATE = config.get("ride_metadata", {}).get("date", "").upper()
@@ -110,7 +115,7 @@ def parse_gpx(filepath):
     return raw_points[::step]
 
 def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, img_h):
-    """Fetches a map snapshot with the route pre-baked onto it by Mapbox servers."""
+    #Fetches a map snapshot with the route pre-baked onto it by Mapbox servers
     
     # Static API dimensions must be integers and capped under 1280
     req_w = min(1280, int(img_w))
@@ -119,7 +124,8 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
     coord_pairs = [(p[0], p[1]) for p in points]
     encoded_track = polyline.encode(coord_pairs, precision=5)
     safe_polyline = urllib.parse.quote(encoded_track)
-    
+    path_styling = f"path-3+e65c00-1({safe_polyline})"
+
     # Start and finish coordinates for markers
     start_lon, start_lat = points[0][1], points[0][0]
     end_lon, end_lat = points[-1][1], points[-1][0]
@@ -132,9 +138,7 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
     c_math = 2 * math.asin(math.sqrt(a))
     distance_meters = 6371000 * c_math  # Radius of Earth in meters
 
-    path_styling = f"path-3+e65c00-1({safe_polyline})"
-
-    # If points are closer than 100 meters, use a single unified "Loop" pin
+    # If start/finish points are closer than 100 meters, use a single unified "Loop" pin
     if distance_meters < 100:
         print(f" -> Loop detected ({distance_meters:.1f}m gap). Rendering a single start/end marker.")
         # 'pin-s-bicycle+2b2b2b' -> A sleek, dark gray bicycle pin denoting a closed circuit
@@ -151,6 +155,7 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
     clean_user = urllib.parse.quote(user_part.strip())
     clean_style = urllib.parse.quote(style_part.strip())
 
+    print(f"Requesting map from Mapbox API")
     url = (
         f"https://api.mapbox.com/styles/v1/{clean_user}/{clean_style}/static/"
         f"{complete_overlay}/"                       
@@ -232,18 +237,19 @@ def draw_poster():
     else:
         print("⚠️ Map background asset failed to load cleanly. Proceeding with layout.")
 
-    # Uncomment the three lines below if you want a border around the map
-    #c.setStrokeColor(line_color)
-    #c.setLineWidth(1.5)
-    #c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
+    # Print border around map if set to true in config.toml
+    if (MAP_BORDER):
+        c.setStrokeColor(line_color)
+        c.setLineWidth(1.5)
+        c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
 
     # Elevation Profile Section (y=180 to y=280)
     prof_x, prof_y, prof_w, prof_h = 20, 180, width - 40, 80
-    #prof_x, prof_y, prof_w, prof_h = 80, 210, width - 80, 90
-    #prof_x, prof_y, prof_w, prof_h = 80, 210, width - 160, 110
-
+    
     prof_path = c.beginPath()
     prof_path.moveTo(prof_x, prof_y)
+    
+    # Build elevation profile
     # 1. Calculate cumulative distance along the route
     cum_distances = [0.0]
     total_dist = 0.0
@@ -261,7 +267,7 @@ def draw_poster():
         total_dist += c_math * r
         cum_distances.append(total_dist)
 
-    # 2. Match Strava's baseline crop (cuts out empty space at the bottom)
+    # 2. Match Strava's baseline crop (cuts out empty space at the bottom of the profile)
     baseline_offset = min_ele - 20
 
     # 3. Plot points based on physical distance (X) and true elevation (Y)
@@ -280,18 +286,19 @@ def draw_poster():
         y = prof_y + (y_ratio * prof_h)
         
         prof_path.lineTo(x, y)
+
     prof_path.lineTo(prof_x + prof_w, prof_y)
     prof_path.close()
 
-    # Use light gray for the elevation profile (change if wanted)
-    c.setFillColor(light_gray)
-    c.setStrokeColor(light_gray)
+    # Elevation profile
+    c.setFillColor(ELEVATION_COLOUR)
+    c.setStrokeColor(ELEVATION_COLOUR)
        
     c.setLineWidth(1.5)
     c.drawPath(prof_path, fill=True, stroke=True)
 
-    # Typography Layout Section
-    c.setFillColor(strava_orange)
+    # Typography Layout Secti
+    c.setFillColor(TITLE_FONT_COLOUR)
     c.setFont("Montserrat-Bold", 30)
     c.drawCentredString(width / 2.0, 130, RIDE_TITLE)
 
