@@ -7,7 +7,7 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 
 + Up to 6 data fields / metrics of your choice at the bottom of the poster
 + If the start & end points are under 100m apart, a single marker is used to mark the start / end point.  Otherwise, both points are marked
-+ Uses standard Mapbox map styles, so easy to style the map to your choice of colour, roads, POIs etc
++ Uses standard Mapbox map styles, so easy to style the map to your choice of colour, level of detail (roads, POIs etc)
 
 ## Requirements
 
@@ -15,6 +15,7 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
     - requests
     - reportlab
     - polyline
+    - PyMuPDF
 - Mapbox account with a valid access token (API Key)
     - The token scope should have three public scopes enabled:
         - Styles: Tiles
@@ -27,22 +28,27 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 
 ## Setup
 
-- Clone or grab the files from this repository
-
-Copy config.sample to config.toml and edit it, adding the relevant data including:
-    - Path to GPX file
-    - Mapbox access token
-    - Ride metadata (distance, time etc)
+- Clone the repository into a folder
+- Copy of your chosen GPX file
+- Rename or copy config.sample to config.toml and edit it, adding the relevant data including:
+    - Path & name of the GPX file
+    - Mapbox API access token
+    - Ride details (title, date)
+    - Between 1 to 6 ride metadata fields (distance, time, elevation gain, power, average speed etc)
  
-If everything is in the same folder (Python code, config.toml and fonts), you should be able to enter that folder and run ```py GeneratePoster.py```.  The output should look something like:
+If everything is in the same folder (Python script, config.toml and fonts), you should be able to enter that folder and run ```py GeneratePoster.py```.  The output should look something like:
+
 ```
+GPXPosterPrint started - processing configuration
 Registering typography layers...
  -> Montserrat-Bold registered successfully.
  -> Inter-Regular registered successfully.
-Parsing 16.7MB GPX file...
+Parsing 6.7MB GPX file...
+ -> Loop detected (58.9m gap). Rendering a single start/end marker.
 Success! Unified map tile asset rendered on layout plane.
 
-Completed! Final poster compiled successfully at: cycling_ride_a3_map_poster.pdf
+PDF poster compiled successfully at: Github Sample.pdf
+Converting PDF to high-res PNG via PyMuPDF (300 DPI)...
 ```
 
-Hopefully you've ended up with a PDF file containing your poster.
+At that point you've hopefully ended up with PDF and PNG files containing your poster ready to print.
