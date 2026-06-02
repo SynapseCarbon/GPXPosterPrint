@@ -1,7 +1,7 @@
 # Rename to config.toml
-# Insert path to your GPX file
+# Insert path to your GPX file in [files]
 # Add your own mapbox access token in [mapbox]-access_token
-# Edit ride_metadata with the number of metrics required (1 to 6) and the title/value for each metric
+# Edit [ride_metadata] with the number of metrics required (1 to 6) and the label/value for each metric
 
 [files]
 gpx_filename = ""
@@ -11,15 +11,19 @@ output_pdf = "cycling_ride_a3_map_poster.pdf"
 access_token = ""   
 style_id = "harpoon76/cmpch13vp004a01s59u1vg7br"
 # Alternative default Mapbox styles (comment / uncomment as needed)
-# https://docs.mapbox.com/api/maps/styles/
+# See https://docs.mapbox.com/api/maps/styles/ for a list
 #style_id = "mapbox/outdoors-v12"
 #style_id = "mapbox/dark-v11"
 #style_id = "mapbox/satellite-v9"
 
 [theme]
+# Set map_border to true for a border round the map
 map_border = false
-title_font = "#e65c00"
-elevation_profile = "#CBCCD0"
+title_font_colour = "#e65c00"
+date_font_colour = "#2b2b2b"
+elevation_profile_colour = "#CBCCD0"
+metric_value_colour = "#e65c00"
+metric_title_colour = "#7a705a"
 
 # Hexcolor references
 # white = "#ffffff"

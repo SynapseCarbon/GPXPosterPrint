@@ -49,8 +49,11 @@ TARGET_POINTS = config["processing"]["target_points"]
 
 # Poster Theme Settings (with defaults if missing)
 MAP_BORDER = config["theme"]["map_border"]
-TITLE_FONT_COLOUR = HexColor(config["theme"]["title_font"],"#e65c00")
-ELEVATION_COLOUR = HexColor(config["theme"]["elevation_profile"],"#CBCCD0")
+TITLE_FONT_COLOUR = HexColor(config["theme"]["title_font_colour"],"#e65c00")
+DATE_FONT_COLOUR = HexColor(config["theme"]["date_font_colour"],"#2b2b2b")
+ELEVATION_COLOUR = HexColor(config["theme"]["elevation_profile_colour"],"#CBCCD0")
+METRIC_VALUE_COLOUR = HexColor(config["theme"]["metric_value_colour"],"#e65c00")
+METRIC_TITLE_COLOUR = HexColor(config["theme"]["metric_title_colour"], "#7a705a")
 
 # Extract Activity Information
 RIDE_TITLE = config.get("ride_metadata", {}).get("title", "").upper()
@@ -200,12 +203,8 @@ def draw_poster():
     width, height = A3
 
     white_bg = HexColor("#ffffff")
-    strava_orange = HexColor("#e65c00")
-    dark_gray = HexColor("#2b2b2b")
-    muted_gray = HexColor("#7a705a")
     line_color = HexColor("#d1c7b2")
-    light_gray = HexColor("#CBCCD0")
-
+    
     # Paint canvas background white
     c.setFillColor(white_bg)
     c.rect(0, 0, width, height, fill=True, stroke=False)
@@ -302,7 +301,7 @@ def draw_poster():
     c.setFont("Montserrat-Bold", 30)
     c.drawCentredString(width / 2.0, 130, RIDE_TITLE)
 
-    c.setFillColor(dark_gray)
+    c.setFillColor(DATE_FONT_COLOUR)
     c.setFont("Montserrat-Bold", 13)  
     c.drawCentredString(width / 2.0, 108, RIDE_DATE)
 
@@ -332,12 +331,12 @@ def draw_poster():
             col_cx = grid_start_x + (idx * col_width) + (col_width / 2.0)
             
             # Render numerical or categorical data layer
-            c.setFillColor(strava_orange)
+            c.setFillColor(METRIC_VALUE_COLOUR)
             c.setFont("Montserrat-Bold", 14)
             c.drawCentredString(col_cx, 58, val_text)
             
             # Render descriptive data caption string layer
-            c.setFillColor(muted_gray)
+            c.setFillColor(METRIC_TITLE_COLOUR)
             c.setFont("Inter-Regular", 8)
             c.drawCentredString(col_cx, 45, lbl_text)
 
