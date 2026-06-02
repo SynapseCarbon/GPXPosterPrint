@@ -1,5 +1,5 @@
 # GPXPosterPrint
-Python project to take a GPX recording from an activity (bike ride, run, walk etc) and make a poster - a great way to remember an epic day (or days!) out.
+Python project to take a GPX recording from an activity (bike ride, run, walk etc) and make an A3 sized poster - a great way to remember an epic day out.
 
 As a note: I leant on Google Gemini for some of this project as I know a little bit of Python but wanted to get it working quicker
 
