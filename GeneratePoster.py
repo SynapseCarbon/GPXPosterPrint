@@ -53,11 +53,16 @@ with open(CONFIG_FILE, "rb") as f:
 
 # File and Map settings
 GPX_FILENAME = config["files"]["gpx_filename"]
-OUTPUT_PDF = config["files"]["output_pdf"].replace(" ","_")
+OUTPUT_PDF = config["files"]["output_pdf"]
 OUTPUT_PNG = os.path.splitext(OUTPUT_PDF)[0] + ".png"
 MAPBOX_ACCESS_TOKEN = config["mapbox"]["access_token"]
 MAPBOX_STYLE_ID = config["mapbox"]["style_id"]
 TARGET_POINTS = config["processing"]["target_points"]
+
+# Replace spaces in output filename if being run on Linux (avoids quotes around  output filename)
+if sys.platform == "linux":
+    OUTPUT_PDF.replace(" ","_")
+    OUTPUT_PNG.replace(" ","_")
 
 # Poster Theme Settings (with defaults if missing)
 MAP_BORDER = config["theme"]["map_border"]
