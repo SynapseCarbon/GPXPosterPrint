@@ -3,7 +3,7 @@ import sys
 import math
 import xml.etree.ElementTree as ET
 import requests
-import polyline  # Run 'pip install polyline' to enable server-side overlays
+import polyline 
 import urllib.parse
 import tomllib
 from io import BytesIO
@@ -66,6 +66,12 @@ if sys.platform == "linux":
 
 # Poster Theme Settings (with defaults if missing)
 MAP_BORDER = config["theme"]["map_border"]
+MAP_BORDER_COLOUR = HexColor(config["theme"]["map_border_colour"],"#000000")
+METRICS_POSITION = config["theme"]["metrics_position"]
+OVERLAY_ELEVATION = config["theme"]["overlay_elevation"]
+TRANSPARENT_ELEVATION = config["theme"]["transparent_elevation_fill"]
+TRANSPARENT_ELEVATION_ALPHA = config["theme"]["transparent_elevation_alpha"]
+PAGE_BACKCGROUND = HexColor(config["theme"]["page_background_colour"],"#ffffff")
 TITLE_FONT_COLOUR = HexColor(config["theme"]["title_font_colour"],"#e65c00")
 DATE_FONT_COLOUR = HexColor(config["theme"]["date_font_colour"],"#2b2b2b")
 ELEVATION_COLOUR = HexColor(config["theme"]["elevation_profile_colour"],"#CBCCD0")
@@ -196,9 +202,62 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
         print(f"Network asset retrieval failed: {e}")
     return None
 
+# Build the elevation profile as a path on the canvas
+def build_elevation_profile(c,parsed_gpx,page_width,elevations,minimum_elevation, maximum_elevation, profile_x, profile_y, profile_height,profile_width):
+
+    # Elevation Profile Section (y=180 to y=280)
+    # prof_x, prof_y, prof_w, prof_h = 20, 180, page_width - 40, 80
+    
+    prof_path = c.beginPath()
+    prof_path.moveTo(profile_x, profile_y)
+    
+    # Build elevation profile
+    # Calculate cumulative distance along the route
+    cum_distances = [0.0]
+    total_dist = 0.0
+    
+    for i in range(1, len(parsed_gpx)):
+        lat1, lon1 = math.radians(parsed_gpx[i-1][0]), math.radians(parsed_gpx[i-1][1])
+        lat2, lon2 = math.radians(parsed_gpx[i][0]), math.radians(parsed_gpx[i][1])
+        
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c_math = 2 * math.asin(math.sqrt(a))
+        r = 6371000  # Earth's radius in meters
+        
+        total_dist += c_math * r
+        cum_distances.append(total_dist)
+
+    # Cut out empty space at the bottom of the profile
+    baseline_offset = minimum_elevation - 20
+
+    # Plot points by physical distance (X) and true elevation (Y) (rather than by time)
+    for idx, ele in enumerate(elevations):
+        # Calculate X based on actual progress along the route, not point index
+        if total_dist > 0:
+            x_ratio = cum_distances[idx] / total_dist
+        else:
+            x_ratio = idx / (len(elevations) - 1)
+            
+        x = profile_x + (x_ratio * profile_width)
+        
+        # Calculate Y using linear scaling from the offset baseline
+        clamped_ele = max(baseline_offset, ele)
+        y_ratio = (clamped_ele - baseline_offset) / (maximum_elevation - baseline_offset if maximum_elevation != baseline_offset else 1)
+        y = profile_y + (y_ratio * profile_height)
+        
+        prof_path.lineTo(x, y)
+
+    prof_path.lineTo(profile_x + profile_width, profile_y)
+    prof_path.close()
+
+    return prof_path
+
 def draw_poster():
     register_custom_fonts()
     
+    #Parse the GPX file
     try:
         points = parse_gpx(GPX_FILENAME)
     except Exception as e:
@@ -219,23 +278,89 @@ def draw_poster():
     c = canvas.Canvas(OUTPUT_PDF, pagesize=A3)
     width, height = A3
 
-    white_bg = HexColor("#ffffff")
     line_color = HexColor("#d1c7b2")
     
     # Paint canvas background white
-    c.setFillColor(white_bg)
+    c.setFillColor(PAGE_BACKCGROUND)
     c.rect(0, 0, width, height, fill=True, stroke=False)
 
-    # Define Map Container Layout Parameters
-    map_padding = 15
-    render_x = map_padding
-    map_w = width - (map_padding * 2)  
-    
-    max_top_y = height - 15
-    render_y = 285            #Was 285, was 250
-    map_h = max_top_y - render_y
+    if METRICS_POSITION == "side":
+        # Metrics are on side of page
 
-    # Calculate optimal zoom level
+        # Define Map Container Layout Parameters
+        map_padding = 15
+        render_x = map_padding
+        map_w = width - (map_padding * 2)  
+    
+        max_top_y = height - 15
+        if OVERLAY_ELEVATION:
+            render_y = 90           #Was 180
+        else:
+            render_y = 180            #Was 285, was 250
+        map_h = max_top_y - render_y
+
+        # Elevation Profile Bounds
+        prof_x = 20
+        prof_y = 90
+        prof_w = width - 40
+        prof_h = 80
+
+        # Ride Typography Placement (Absolute Bottom)
+        title_y = 55
+        caption_y = 35
+
+        # Floating Metrics Panel Card Geometry
+        sidebar_w = 140
+        sidebar_h = (len(STATS_METRICS) * 65) + 30  # Height auto-scales with metric count
+
+        # Position card in the upper-right region of the map canvas
+        panel_x = (width - map_padding) - sidebar_w - 20
+        panel_y = max_top_y - sidebar_h - 20
+
+        # Map dynamic coordinates for the stacked metrics
+        metric_positions = []
+        start_y = (panel_y + sidebar_h) - 55
+        y_gap = 65
+        for idx in range(len(STATS_METRICS)):
+            m_x = panel_x + 20  # Inset padding inside card
+            m_y = start_y - (idx * y_gap)
+            metric_positions.append((m_x, m_y))
+    else:
+        # Metrics are at bottom of page
+
+        map_padding = 15          
+        render_x = map_padding
+        map_w = width - (map_padding * 2)
+
+        max_top_y = height - 15
+        if OVERLAY_ELEVATION:
+            render_y = 160           #Was 180
+        else:
+            render_y = 250           #Was 285, was 250
+        map_h = max_top_y - render_y
+
+        # Elevation Profile Bounds
+        prof_x = 20
+        prof_y = 160
+        prof_w = width - 40
+        prof_h = 80
+
+        # Ride Typography Placement
+        title_y = 125
+        caption_y = 100
+
+        # Horizontal Metrics Grid Alignment
+        metric_positions = []
+        num_metrics = len(STATS_METRICS)
+        available_w = width - 160
+        col_w = available_w / num_metrics
+        for idx in range(num_metrics):
+            # Center points for each column block
+            m_x = 80 + (idx * col_w) + (col_w / 2)
+            m_y = 45
+            metric_positions.append((m_x, m_y))
+
+    # Calculate optimal zoom level for map
     max_span = max(max_lat - min_lat, max_lon - min_lon)
     if max_span > 1.2: zoom = 8
     elif max_span > 0.5: zoom = 9
@@ -255,107 +380,75 @@ def draw_poster():
 
     # Print border around map if set to true in config.toml
     if (MAP_BORDER):
-        c.setStrokeColor(line_color)
+        c.setStrokeColor(MAP_BORDER_COLOUR)
         c.setLineWidth(1.5)
         c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
 
-    # Elevation Profile Section (y=180 to y=280)
-    prof_x, prof_y, prof_w, prof_h = 20, 180, width - 40, 80
-    
-    prof_path = c.beginPath()
-    prof_path.moveTo(prof_x, prof_y)
-    
-    # Build elevation profile
-    # 1. Calculate cumulative distance along the route
-    cum_distances = [0.0]
-    total_dist = 0.0
-    
-    for i in range(1, len(points)):
-        lat1, lon1 = math.radians(points[i-1][0]), math.radians(points[i-1][1])
-        lat2, lon2 = math.radians(points[i][0]), math.radians(points[i][1])
-        
-        dlon = lon2 - lon1
-        dlat = lat2 - lat1
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-        c_math = 2 * math.asin(math.sqrt(a))
-        r = 6371000  # Earth's radius in meters
-        
-        total_dist += c_math * r
-        cum_distances.append(total_dist)
+    elevation_profile = build_elevation_profile(c,points,width,eles,min_ele,max_ele,prof_x,prof_y,prof_h,prof_w)
 
-    # 2. Match Strava's baseline crop (cuts out empty space at the bottom of the profile)
-    baseline_offset = min_ele - 20
+    # Draw elevation profile on page
+    if TRANSPARENT_ELEVATION:
+        transparent_fill = ELEVATION_COLOUR.clone(alpha=TRANSPARENT_ELEVATION_ALPHA)
+        c.setFillColor(transparent_fill)
+        c.setStrokeColor(ELEVATION_COLOUR)
+        c.setLineWidth(2.0)
+    else:    
+        c.setFillColor(ELEVATION_COLOUR)
+        c.setStrokeColor(ELEVATION_COLOUR)
+        c.setLineWidth(1.5)
 
-    # 3. Plot points based on physical distance (X) and true elevation (Y)
-    for idx, ele in enumerate(eles):
-        # Calculate X based on actual progress along the route, not point index
-        if total_dist > 0:
-            x_ratio = cum_distances[idx] / total_dist
-        else:
-            x_ratio = idx / (len(eles) - 1)
-            
-        x = prof_x + (x_ratio * prof_w)
-        
-        # Calculate Y using linear scaling from our offset baseline
-        clamped_ele = max(baseline_offset, ele)
-        y_ratio = (clamped_ele - baseline_offset) / (max_ele - baseline_offset if max_ele != baseline_offset else 1)
-        y = prof_y + (y_ratio * prof_h)
-        
-        prof_path.lineTo(x, y)
+    c.drawPath(elevation_profile, fill=True, stroke=True)
 
-    prof_path.lineTo(prof_x + prof_w, prof_y)
-    prof_path.close()
+    # Typography Layout Section
 
-    # Elevation profile
-    c.setFillColor(ELEVATION_COLOUR)
-    c.setStrokeColor(ELEVATION_COLOUR)
-       
-    c.setLineWidth(1.5)
-    c.drawPath(prof_path, fill=True, stroke=True)
-
-    # Typography Layout Secti
+    # Main Header Title Block
     c.setFillColor(TITLE_FONT_COLOUR)
     c.setFont("Montserrat-Bold", 30)
-    c.drawCentredString(width / 2.0, 130, RIDE_TITLE)
+    if METRICS_POSITION == "side":
+        c.drawString(render_x + 20, title_y, RIDE_TITLE)
+    else:
+        c.drawCentredString(width / 2, title_y, RIDE_TITLE)
 
+    # Date or Subtitle Block
     c.setFillColor(DATE_FONT_COLOUR)
-    c.setFont("Montserrat-Bold", 13)  
-    c.drawCentredString(width / 2.0, 108, RIDE_DATE)
+    c.setFont("Montserrat-Bold", 13)
+    if METRICS_POSITION == "side":
+        c.drawString(render_x + 20, caption_y, RIDE_DATE)
+    else:
+        c.drawCentredString(width / 2, caption_y, RIDE_DATE)
 
-    c.setStrokeColor(line_color)
-    c.setLineWidth(1.0)
-    c.line(40, 88, width - 40, 88)
+    # Render metrics
+    if METRICS_POSITION == "side":
+        panel_fill = PAGE_BACKCGROUND.clone(alpha=0.70)  # Let subtle map textures bleed through
+        c.setFillColor(panel_fill)
+        c.setStrokeColor(line_color.clone(alpha=0.5))
+        c.setLineWidth(1)
+        c.roundRect(panel_x, panel_y, sidebar_w, sidebar_h, 12, fill=True, stroke=True)
 
-    # =====================================================================
-    # DYNAMIC FLUID METRICS ENGINE
-    # =====================================================================
-    num_metrics = len(STATS_METRICS)
-    
-    if num_metrics > 0:
-        # Constrain maximum structural boundaries to margins
-        grid_start_x = 40
-        grid_width = width - 80
-        
-        # Calculate dynamic horizontal spacing allocation per metric block
-        col_width = grid_width / float(num_metrics)
-        
         for idx, item in enumerate(STATS_METRICS):
-            # Safe fallbacks if string parameters are omitted in the TOML
-            val_text = str(item.get("value", ""))
-            lbl_text = str(item.get("label", "")).upper()
+            m_x, m_y = metric_positions[idx]
             
-            # Find the true horizontal center of this specific column space
-            col_cx = grid_start_x + (idx * col_width) + (col_width / 2.0)
-            
-            # Render numerical or categorical data layer
+            c.setFont("Montserrat-Bold", 20)
             c.setFillColor(METRIC_VALUE_COLOUR)
-            c.setFont("Montserrat-Bold", 14)
-            c.drawCentredString(col_cx, 58, val_text)
+            c.drawString(m_x, m_y + 14, item["value"])
             
-            # Render descriptive data caption string layer
+            c.setFont("Inter-Regular", 12)
             c.setFillColor(METRIC_TITLE_COLOUR)
+            c.drawString(m_x, m_y, item["label"].upper())
+    else:
+        for idx, item in enumerate(STATS_METRICS):
+            m_x, m_y = metric_positions[idx]
+            
+            c.setFont("Montserrat-Bold", 14)
+            c.setFillColor(METRIC_VALUE_COLOUR)
+            c.drawCentredString(m_x, m_y + 16, item["value"])
+            
             c.setFont("Inter-Regular", 8)
-            c.drawCentredString(col_cx, 45, lbl_text)
+            c.setFillColor(METRIC_TITLE_COLOUR)
+            c.drawCentredString(m_x, m_y, item["label"].upper())
+        c.setStrokeColor(line_color)
+        c.setLineWidth(1.0)
+        c.line(40, 88, width - 40, 88)
 
     c.showPage()
     c.save()

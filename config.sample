@@ -15,15 +15,24 @@ style_id = "harpoon76/cmpch13vp004a01s59u1vg7br"
 #style_id = "mapbox/outdoors-v12"
 #style_id = "mapbox/dark-v11"
 #style_id = "mapbox/satellite-v9"
+#style_id = "mapbox/light-v11"
 
 [theme]
 # Set map_border to true for a border round the map
 map_border = false
+overlay_elevation = true
+transparent_elevation_fill = true
+transparent_elevation_alpha = 0.80
+# metrics_position can be "side" or "bottom"
+metrics_position = "side"
+page_background_colour = "#ffffff"
 title_font_colour = "#e65c00"
 date_font_colour = "#2b2b2b"
 elevation_profile_colour = "#CBCCD0"
+#elevation_profile_colour = "#000000"
 metric_value_colour = "#e65c00"
 metric_title_colour = "#7a705a"
+map_border_colour = "#000000"
 
 # Hexcolor references
 # white = "#ffffff"
