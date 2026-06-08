@@ -60,7 +60,11 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
  
-If everything is in the same folder (Python script, config.toml), you should be able to run ```py GeneratePoster.py```.  The output should look something like:
+If everything is in the same folder (Python script, config.toml), you should be able to run:
+
+```py GeneratePoster.py```
+
+The output should look something like:
 
 ```
 GPXPosterPrint started - processing configuration
