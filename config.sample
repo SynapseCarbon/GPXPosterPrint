@@ -5,7 +5,7 @@
 
 [files]
 gpx_filename = ""
-output_pdf = "cycling_ride_a3_map_poster.pdf"
+output_pdf = "gpxposterpint_a3.pdf"
 
 [mapbox]
 access_token = ""   
@@ -18,21 +18,24 @@ style_id = "harpoon76/cmpch13vp004a01s59u1vg7br"
 #style_id = "mapbox/light-v11"
 
 [theme]
-# Set map_border to true for a border round the map
+# Set map_border to true for a border around the map
 map_border = false
 overlay_elevation = true
 transparent_elevation_fill = true
 transparent_elevation_alpha = 0.80
 # metrics_position can be "side" or "bottom"
 metrics_position = "side"
+# title position can be "left" or "centre" / "center"
+title_position = "left"
 page_background_colour = "#ffffff"
+metric_box_outline_colour = "#000000"
 title_font_colour = "#e65c00"
 date_font_colour = "#2b2b2b"
 elevation_profile_colour = "#CBCCD0"
-#elevation_profile_colour = "#000000"
 metric_value_colour = "#e65c00"
 metric_title_colour = "#7a705a"
 map_border_colour = "#000000"
+bottom_line_colour = "#d1c7b2"
 
 # Hexcolor references
 # white = "#ffffff"

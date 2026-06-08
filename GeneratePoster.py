@@ -6,15 +6,17 @@ import requests
 import polyline 
 import urllib.parse
 import tomllib
+
 from io import BytesIO
 from reportlab.lib.pagesizes import A3
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
 from reportlab.lib.utils import ImageReader
-
-# --- Typographic Additions ---
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from pydantic import BaseModel, Field, FilePath, field_validator, conlist
+from pydantic_extra_types.color import Color
+from typing import List, Dict, Any, Literal
 
 # Check if PyMuPDF is available for high-res PNG rendering (PDF>PNG)
 try:
@@ -22,6 +24,57 @@ try:
     PYMUPDF_AVAILABLE = True
 except ImportError:
     PYMUPDF_AVAILABLE = False
+
+class FilesModel(BaseModel):
+    # FilePath ensures the file path is a string AND the file actually exists
+    gpx_filename: FilePath  
+    output_pdf: str
+
+class MapboxModel(BaseModel):
+    # Enforces explicit string inputs for API configuration
+    access_token: str
+    style_id: str
+
+class ProcessingModel(BaseModel):
+    target_points: int
+
+class ThemeModel(BaseModel):
+    map_border: bool
+    overlay_elevation: bool
+    transparent_elevation_fill: bool
+    transparent_elevation_alpha: float
+    metrics_position: Literal["bottom","side"]
+    title_position: Literal["left","centre","center"]
+    page_background_colour: Color
+    metric_box_outline_colour: Color
+    title_font_colour: Color
+    date_font_colour: Color
+    elevation_profile_colour: Color
+    metric_value_colour: Color
+    metric_title_colour: Color
+    map_border_colour: Color
+    bottom_line_colour: Color
+
+class MetricItemModel(BaseModel):
+    # Child class for RideMetadata
+    value: str  
+    label: str  
+
+class RideMetadataModel(BaseModel):
+    title: str
+    date: str
+    
+    # Enforce that metrics is a list of MetricItemModel objects 
+    # and restrict the list size between 1 and 6 items
+    metrics: list[MetricItemModel] = Field(..., min_length=1, max_length=6)
+
+class ConfigValidator(BaseModel):
+    # Master class of all config items
+    files: FilesModel
+    mapbox: MapboxModel
+    processing: ProcessingModel
+    ride_metadata: RideMetadataModel
+    theme: ThemeModel
 
 print(f"GPXPosterPrint started - processing configuration")
 
@@ -33,65 +86,43 @@ print(f"GPXPosterPrint started - processing configuration")
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 2. Define your font path relative to the script location
-# (This works perfectly both inside Docker AND on your local machine)
+# (This works perfectly both inside Docker AND on local machine)
 MONTSERRAT_BOLD_PATH = os.path.join(SCRIPT_DIR, "fonts", "Montserrat-Bold.ttf")
 INTER_REGULAR_PATH = os.path.join(SCRIPT_DIR, "fonts", "Inter-Regular.ttf")
 
 CONFIG_FILE = "config.toml"
 
-#Load configuration from file
-
 if os.path.exists("/app/data"):
     os.chdir("/app/data")
-
-if not os.path.exists(CONFIG_FILE):
-    print(f"❌ ERROR: Configuration file '{CONFIG_FILE}' not found!")
-    sys.exit(1)
-
-with open(CONFIG_FILE, "rb") as f:
-    config = tomllib.load(f)
-
-# File and Map settings
-GPX_FILENAME = config["files"]["gpx_filename"]
-OUTPUT_PDF = config["files"]["output_pdf"]
-OUTPUT_PNG = os.path.splitext(OUTPUT_PDF)[0] + ".png"
-MAPBOX_ACCESS_TOKEN = config["mapbox"]["access_token"]
-MAPBOX_STYLE_ID = config["mapbox"]["style_id"]
-TARGET_POINTS = config["processing"]["target_points"]
-
-# Replace spaces in output filename if being run on Linux (avoids quotes around  output filename)
-if sys.platform == "linux":
-    OUTPUT_PDF.replace(" ","_")
-    OUTPUT_PNG.replace(" ","_")
-
-# Poster Theme Settings (with defaults if missing)
-MAP_BORDER = config["theme"]["map_border"]
-MAP_BORDER_COLOUR = HexColor(config["theme"]["map_border_colour"],"#000000")
-METRICS_POSITION = config["theme"]["metrics_position"]
-OVERLAY_ELEVATION = config["theme"]["overlay_elevation"]
-TRANSPARENT_ELEVATION = config["theme"]["transparent_elevation_fill"]
-TRANSPARENT_ELEVATION_ALPHA = config["theme"]["transparent_elevation_alpha"]
-PAGE_BACKCGROUND = HexColor(config["theme"]["page_background_colour"],"#ffffff")
-TITLE_FONT_COLOUR = HexColor(config["theme"]["title_font_colour"],"#e65c00")
-DATE_FONT_COLOUR = HexColor(config["theme"]["date_font_colour"],"#2b2b2b")
-ELEVATION_COLOUR = HexColor(config["theme"]["elevation_profile_colour"],"#CBCCD0")
-METRIC_VALUE_COLOUR = HexColor(config["theme"]["metric_value_colour"],"#e65c00")
-METRIC_TITLE_COLOUR = HexColor(config["theme"]["metric_title_colour"], "#7a705a")
-
-# Extract Activity Information
-RIDE_TITLE = config.get("ride_metadata", {}).get("title", "").upper()
-RIDE_DATE = config.get("ride_metadata", {}).get("date", "").upper()
-
-# Extract Dynamic Metrics List
-STATS_METRICS = config.get("ride_metadata", {}).get("metrics", [])
 
 # =====================================================================
 # CORE FUNCTIONS
 # =====================================================================
 
+def load_and_validate_poster_config(file_path: str):
+    try:
+
+        with open(CONFIG_FILE, "rb") as f:
+            raw_config = tomllib.load(f)
+        
+        # Parse and validate everything at once
+        validated_data = ConfigValidator(**raw_config)
+        
+        print("✅ Success: config.toml passed all structural checks!")
+        return validated_data
+
+    except FileNotFoundError:
+        print(f"❌ File Error: The file at '{file_path}' could not be found.")
+    except tomllib.TOMLDecodeError as e:
+        print(f"❌ TOML Syntax Error: Your file has structural typos.\nDetails: {e}")
+    except Exception as e:
+        print(f"❌ Configuration Typo Detected:\n{e}")
+        return None
+
 def register_custom_fonts():
-    """Registers premium fonts for a true gallery match."""
-    print("Registering typography layers...")
+    # Registers fonts with fallback if not found
+
+    print("Registering fonts...")
     try:
         pdfmetrics.registerFont(TTFont('Montserrat-Bold', MONTSERRAT_BOLD_PATH))
         print(" -> Montserrat-Bold registered successfully.")
@@ -119,7 +150,7 @@ def load_metadata(filepath):
                     meta[key.strip().upper()] = val.strip()
     return meta
 
-def parse_gpx(filepath):
+def parse_gpx(filepath, target_points):
     print(f"Parsing {os.path.getsize(filepath)/(1024*1024):.1f}MB GPX file...")
     namespaces = {'gpx': 'http://www.topografix.com/GPX/1/1'}
     tree = ET.parse(filepath)
@@ -137,10 +168,10 @@ def parse_gpx(filepath):
     if not raw_points:
         raise ValueError("No valid GPS points found in the GPX file.")
 
-    step = max(1, len(raw_points) // TARGET_POINTS)
+    step = max(1, len(raw_points) // target_points)
     return raw_points[::step]
 
-def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, img_h):
+def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, img_h, mapbox_style_id, mapbox_token):
     #Fetches a map snapshot with the route pre-baked onto it by Mapbox servers
     
     # Static API dimensions must be integers and capped under 1280
@@ -171,13 +202,13 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
         loop_marker = f"pin-s-star+2b2b2b({start_lon},{start_lat})"
         complete_overlay = f"{path_styling},{loop_marker}"
     else:
-        # Point-to-point ride: Render separate Start (Green) and Finish (Red) pins
+        # Point-to-point ride: Render separate Start pins
         start_marker = f"pin-s-star+2ecc71({start_lon},{start_lat})"
         finish_marker = f"pin-s-marker+e74c3c({end_lon},{end_lat})"
         complete_overlay = f"{path_styling},{start_marker},{finish_marker}"
 
     # Split user account and style key into clean components
-    user_part, style_part = MAPBOX_STYLE_ID.split('/')
+    user_part, style_part =  mapbox_style_id.split('/')
     clean_user = urllib.parse.quote(user_part.strip())
     clean_style = urllib.parse.quote(style_part.strip())
 
@@ -188,7 +219,7 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
         f"{center_lon},{center_lat},{zoom_level},0,0/"  
         f"{req_w}x{req_h}@2x"                     
         f"?attribution=false&logo=false"
-        f"&access_token={MAPBOX_ACCESS_TOKEN}"
+        f"&access_token={mapbox_token}"
     )
     
     try:
@@ -202,8 +233,8 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
         print(f"Network asset retrieval failed: {e}")
     return None
 
-# Build the elevation profile as a path on the canvas
 def build_elevation_profile(c,parsed_gpx,page_width,elevations,minimum_elevation, maximum_elevation, profile_x, profile_y, profile_height,profile_width):
+    # Build the elevation profile as a path on the canvas
 
     # Elevation Profile Section (y=180 to y=280)
     # prof_x, prof_y, prof_w, prof_h = 20, 180, page_width - 40, 80
@@ -255,11 +286,23 @@ def build_elevation_profile(c,parsed_gpx,page_width,elevations,minimum_elevation
     return prof_path
 
 def draw_poster():
+
+    # Load and validate the config file
+    config_data = load_and_validate_poster_config(CONFIG_FILE)
+
+    OUTPUT_PNG = os.path.splitext(config_data.files.output_pdf)[0] + ".png"
+
+    # Replace spaces in output filename if running on Linux (avoids extra quotes around output filename)
+    if sys.platform == "linux":
+        config_data.files.output_pdf.replace(" ","_")
+        OUTPUT_PNG.replace(" ","_")
+
+    # Register fonts
     register_custom_fonts()
     
-    #Parse the GPX file
+    # Parse the GPX file
     try:
-        points = parse_gpx(GPX_FILENAME)
+        points = parse_gpx(config_data.files.gpx_filename,config_data.processing.target_points)
     except Exception as e:
         print(f"Error: {e}")
         return
@@ -275,16 +318,16 @@ def draw_poster():
     center_lat = (min_lat + max_lat) / 2.0
     center_lon = (min_lon + max_lon) / 2.0
 
-    c = canvas.Canvas(OUTPUT_PDF, pagesize=A3)
+    c = canvas.Canvas(config_data.files.output_pdf, pagesize=A3)
     width, height = A3
 
     line_color = HexColor("#d1c7b2")
     
-    # Paint canvas background white
-    c.setFillColor(PAGE_BACKCGROUND)
+    # Paint canvas
+    c.setFillColor(HexColor(config_data.theme.page_background_colour.as_hex(format="long")))
     c.rect(0, 0, width, height, fill=True, stroke=False)
 
-    if METRICS_POSITION == "side":
+    if config_data.theme.metrics_position == "side":
         # Metrics are on side of page
 
         # Define Map Container Layout Parameters
@@ -293,10 +336,11 @@ def draw_poster():
         map_w = width - (map_padding * 2)  
     
         max_top_y = height - 15
-        if OVERLAY_ELEVATION:
+        if config_data.theme.overlay_elevation:
+            # Overlay elevation over bottom of map, so map is longer
             render_y = 90           #Was 180
         else:
-            render_y = 180            #Was 285, was 250
+            render_y = 180          #Was 285, was 250
         map_h = max_top_y - render_y
 
         # Elevation Profile Bounds
@@ -311,7 +355,7 @@ def draw_poster():
 
         # Floating Metrics Panel Card Geometry
         sidebar_w = 140
-        sidebar_h = (len(STATS_METRICS) * 65) + 30  # Height auto-scales with metric count
+        sidebar_h = (len(config_data.ride_metadata.metrics) * 65) + 30  # Height auto-scales with metric count
 
         # Position card in the upper-right region of the map canvas
         panel_x = (width - map_padding) - sidebar_w - 20
@@ -321,7 +365,7 @@ def draw_poster():
         metric_positions = []
         start_y = (panel_y + sidebar_h) - 55
         y_gap = 65
-        for idx in range(len(STATS_METRICS)):
+        for idx in range(len(config_data.ride_metadata.metrics)):
             m_x = panel_x + 20  # Inset padding inside card
             m_y = start_y - (idx * y_gap)
             metric_positions.append((m_x, m_y))
@@ -333,7 +377,8 @@ def draw_poster():
         map_w = width - (map_padding * 2)
 
         max_top_y = height - 15
-        if OVERLAY_ELEVATION:
+        if config_data.theme.overlay_elevation:
+            # Overlay elevation over bottom of map, so map is longer
             render_y = 160           #Was 180
         else:
             render_y = 250           #Was 285, was 250
@@ -351,7 +396,7 @@ def draw_poster():
 
         # Horizontal Metrics Grid Alignment
         metric_positions = []
-        num_metrics = len(STATS_METRICS)
+        num_metrics = len(config_data.ride_metadata.metrics)
         available_w = width - 160
         col_w = available_w / num_metrics
         for idx in range(num_metrics):
@@ -368,33 +413,33 @@ def draw_poster():
     else: zoom = 11
 
     # Fetch map asset from Mapbox
-    img_stream = get_mapbox_overlay_map(points, center_lat, center_lon, zoom, map_w, map_h)
+    img_stream = get_mapbox_overlay_map(points, center_lat, center_lon, zoom, map_w, map_h, config_data.mapbox.style_id, config_data.mapbox.access_token)
     
     if img_stream is not None:
         img_reader = ImageReader(img_stream)
         # Directly drawing the image removes the fragile clipping box overlay logic entirely
         c.drawImage(img_reader, render_x, render_y, width=map_w, height=map_h)
-        print("Success! Unified map tile asset rendered on layout plane.")
+        print(" -> Success! Unified map tile asset rendered on layout plane.")
     else:
         print("⚠️ Map background asset failed to load cleanly. Proceeding with layout.")
 
-    # Print border around map if set to true in config.toml
-    if (MAP_BORDER):
-        c.setStrokeColor(MAP_BORDER_COLOUR)
+    # Print border around map if set to true in config
+    if (config_data.theme.map_border):
+        c.setStrokeColor(HexColor(config_data.theme.map_border_colour.as_hex(format="long")))
         c.setLineWidth(1.5)
         c.rect(render_x, render_y, map_w, map_h, fill=False, stroke=True)
 
     elevation_profile = build_elevation_profile(c,points,width,eles,min_ele,max_ele,prof_x,prof_y,prof_h,prof_w)
 
     # Draw elevation profile on page
-    if TRANSPARENT_ELEVATION:
-        transparent_fill = ELEVATION_COLOUR.clone(alpha=TRANSPARENT_ELEVATION_ALPHA)
+    if config_data.theme.transparent_elevation_fill:
+        transparent_fill = HexColor(config_data.theme.elevation_profile_colour.as_hex(format="long")).clone(alpha=config_data.theme.transparent_elevation_alpha)
         c.setFillColor(transparent_fill)
-        c.setStrokeColor(ELEVATION_COLOUR)
+        c.setStrokeColor(HexColor(config_data.theme.elevation_profile_colour.as_hex(format="long")))
         c.setLineWidth(2.0)
     else:    
-        c.setFillColor(ELEVATION_COLOUR)
-        c.setStrokeColor(ELEVATION_COLOUR)
+        c.setFillColor(HexColor(config_data.theme.elevation_profile_colour.as_hex(format="long")))
+        c.setStrokeColor(HexColor(config_data.theme.elevation_profile_colour.as_hex(format="long")))
         c.setLineWidth(1.5)
 
     c.drawPath(elevation_profile, fill=True, stroke=True)
@@ -402,62 +447,62 @@ def draw_poster():
     # Typography Layout Section
 
     # Main Header Title Block
-    c.setFillColor(TITLE_FONT_COLOUR)
+    c.setFillColor(HexColor(config_data.theme.title_font_colour.as_hex(format="long")))
     c.setFont("Montserrat-Bold", 30)
-    if METRICS_POSITION == "side":
-        c.drawString(render_x + 20, title_y, RIDE_TITLE)
+    if config_data.theme.title_position == "left":
+        c.drawString(render_x, title_y, config_data.ride_metadata.title)
     else:
-        c.drawCentredString(width / 2, title_y, RIDE_TITLE)
+        c.drawCentredString(width / 2, title_y, config_data.ride_metadata.title)
 
     # Date or Subtitle Block
-    c.setFillColor(DATE_FONT_COLOUR)
+    c.setFillColor(HexColor(config_data.theme.date_font_colour.as_hex(format="long")))
     c.setFont("Montserrat-Bold", 13)
-    if METRICS_POSITION == "side":
-        c.drawString(render_x + 20, caption_y, RIDE_DATE)
+    if config_data.theme.title_position == "left":
+        c.drawString(render_x, caption_y, config_data.ride_metadata.date)
     else:
-        c.drawCentredString(width / 2, caption_y, RIDE_DATE)
+        c.drawCentredString(width / 2, caption_y, config_data.ride_metadata.date)
 
     # Render metrics
-    if METRICS_POSITION == "side":
-        panel_fill = PAGE_BACKCGROUND.clone(alpha=0.70)  # Let subtle map textures bleed through
+    if config_data.theme.metrics_position == "side":
+        panel_fill = HexColor(config_data.theme.page_background_colour.as_hex(format="long")).clone(alpha=0.70)  # Let subtle map textures bleed through
         c.setFillColor(panel_fill)
-        c.setStrokeColor(line_color.clone(alpha=0.5))
+        c.setStrokeColor((HexColor(config_data.theme.metric_box_outline_colour.as_hex(format="long"))).clone(alpha=0.5))
         c.setLineWidth(1)
         c.roundRect(panel_x, panel_y, sidebar_w, sidebar_h, 12, fill=True, stroke=True)
 
-        for idx, item in enumerate(STATS_METRICS):
+        for idx, item in enumerate(config_data.ride_metadata.metrics):
             m_x, m_y = metric_positions[idx]
             
             c.setFont("Montserrat-Bold", 20)
-            c.setFillColor(METRIC_VALUE_COLOUR)
-            c.drawString(m_x, m_y + 14, item["value"])
+            c.setFillColor(HexColor(config_data.theme.metric_value_colour.as_hex(format="long")))
+            c.drawString(m_x, m_y + 14, item.value)
             
             c.setFont("Inter-Regular", 12)
-            c.setFillColor(METRIC_TITLE_COLOUR)
-            c.drawString(m_x, m_y, item["label"].upper())
+            c.setFillColor(HexColor(config_data.theme.metric_title_colour.as_hex(format="long")))
+            c.drawString(m_x, m_y, item.label.upper())
     else:
-        for idx, item in enumerate(STATS_METRICS):
+        for idx, item in enumerate(config_data.ride_metadata.metrics):
             m_x, m_y = metric_positions[idx]
             
             c.setFont("Montserrat-Bold", 14)
-            c.setFillColor(METRIC_VALUE_COLOUR)
-            c.drawCentredString(m_x, m_y + 16, item["value"])
+            c.setFillColor(HexColor(config_data.theme.metric_value_colour.as_hex(format="long")))
+            c.drawCentredString(m_x, m_y + 16, item.value)
             
             c.setFont("Inter-Regular", 8)
-            c.setFillColor(METRIC_TITLE_COLOUR)
-            c.drawCentredString(m_x, m_y, item["label"].upper())
-        c.setStrokeColor(line_color)
+            c.setFillColor(HexColor(config_data.theme.metric_title_colour.as_hex(format="long")))
+            c.drawCentredString(m_x, m_y, item.label.upper())
+        c.setStrokeColor(HexColor(config_data.theme.bottom_line_colour_colour.as_hex(format="long")))
         c.setLineWidth(1.0)
         c.line(40, 88, width - 40, 88)
 
     c.showPage()
     c.save()
-    print(f"\nPDF poster compiled successfully at: {OUTPUT_PDF}")
+    print(f"\nPDF poster compiled successfully at: {config_data.files.output_pdf}")
 
     if PYMUPDF_AVAILABLE:
         print(f"Converting PDF to high-res PNG via PyMuPDF (300 DPI)...")
         try:
-            doc = pymupdf.open(OUTPUT_PDF)
+            doc = pymupdf.open(config_data.files.output_pdf)
             page = doc.load_page(0)  # Load the single page poster
             
             # 300 DPI scaling math: 300 DPI / standard 72 points per inch = 4.166x zoom factor
@@ -467,7 +512,7 @@ def draw_poster():
             # Render the vector structures to crisp raster pixels
             pix = page.get_pixmap(matrix=matrix)
             pix.save(OUTPUT_PNG)
-            print(f"🎉 Generated High-Res Poster Image at: {OUTPUT_PNG}")
+            print(f"🎉 Generated high-res PNG at: {OUTPUT_PNG}")
             doc.close()
         except Exception as e:
             print(f"⚠️ Image raster conversion failed: {e}")

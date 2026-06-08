@@ -10,11 +10,12 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 + If the start & end points are under 100m apart, a single marker is used to indicatemapbox the start / end point.  Otherwise, both points are marked
 + Uses standard Mapbox map styles, so easy to style the map to your choice of colour, level of detail (roads, POIs etc)
 + Easy customisation of font colours in the config file
+  + TOML file format validated before processing
 + Available as a pre-built Docker container if you don't have Python but do have Docker installed - see [Docker](Docker.md)
 
 ## Requirements
 
-- Python 3.x (I used Python 3.14.5) with these packages installed (via pip3):
+- Python 3.11 or newer as the script requiress the tomlib library.  I used Python 3.14.5 with these additonal packages installed (via pip):
     - requests
     - reportlab
     - polyline
