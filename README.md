@@ -37,7 +37,7 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 
 I have more detail on my blog (including creating the Mapbox access token:)
 
-https://cxi.org.uk/gpxposterprint-sports-activity-poster-printing/
+<a href="https://cxi.org.uk/gpxposterprint-sports-activity-poster-printing/" target="_blank">cxi.org.uk - GPXPosterPrint</a>
 
 The quick instructions:
 
