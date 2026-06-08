@@ -137,19 +137,6 @@ def register_custom_fonts():
         print(f" -> ⚠️ Inter-Regular.ttf load failed ({e}). Falling back to Helvetica.")
         pdfmetrics.registerFont(TTFont('Inter-Regular', 'Helvetica'))
 
-def load_metadata(filepath):
-    meta = {}
-    if not os.path.exists(filepath):
-            print(f"Unable to find parameter text file at: {os.getcwd()}\\{filepath}")
-            sys.exit()
-    with open(filepath, 'r', encoding='utf-8') as f:
-        for line in f:
-            if not line.startswith("#"):
-                if ':' in line:
-                    key, val = line.split(':', 1)
-                    meta[key.strip().upper()] = val.strip()
-    return meta
-
 def parse_gpx(filepath, target_points):
     print(f"Parsing {os.path.getsize(filepath)/(1024*1024):.1f}MB GPX file...")
     namespaces = {'gpx': 'http://www.topografix.com/GPX/1/1'}
@@ -503,7 +490,7 @@ def draw_poster():
         print(f"Converting PDF to high-res PNG via PyMuPDF (300 DPI)...")
         try:
             doc = pymupdf.open(config_data.files.output_pdf)
-            page = doc.load_page(0)  # Load the single page poster
+            page = doc.load_page(0)  # Load the generated file
             
             # 300 DPI scaling math: 300 DPI / standard 72 points per inch = 4.166x zoom factor
             zoom_factor = 300 / 72  
