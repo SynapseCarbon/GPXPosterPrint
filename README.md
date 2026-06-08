@@ -49,7 +49,7 @@ The quick instructions:
     - Ride details (title, date)
     - Between 1 to 6 ride metadata fields (distance, time, elevation gain, power, average speed etc)
 
-For instance, if you were doing this on Windows from a PowerShell prompt:
+For instance, if you were doing this on Windows (where Python 3 is already installed) from a PowerShell prompt:
 
 ```
 mkdir gpxposterprint
