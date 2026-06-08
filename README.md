@@ -35,19 +35,36 @@ As a note: I leant on Google Gemini for some of this project as I know a little 
 
 ## Setup
 
-- Clone the repository into a folder
-- Copy of your chosen GPX file
+I have more detail on my blog (including creating the Mapbox access token:)
+
+https://cxi.org.uk/gpxposterprint-sports-activity-poster-printing/
+
+The quick instructions:
+
+- Clone the repository into a folder on your PC
+- Copy your chosen GPX file into the same folder
 - Rename or copy config.sample to config.toml and edit it, adding the relevant data including:
     - Path & name of the GPX file
     - Mapbox API access token
     - Ride details (title, date)
     - Between 1 to 6 ride metadata fields (distance, time, elevation gain, power, average speed etc)
+
+For instance, if you were doing this on Windows from a PowerShell prompt:
+
+```
+mkdir gpxposterprint
+cd gpxposterprint
+git clone https://github.com/SynapseCarbon/GPXPosterPrint.git .
+python3 -m venv venv\
+venv\Scripts\activate
+pip install -r requirements.txt
+```
  
-If everything is in the same folder (Python script, config.toml and fonts), you should be able to enter that folder and run ```py GeneratePoster.py```.  The output should look something like:
+If everything is in the same folder (Python script, config.toml), you should be able to run ```py GeneratePoster.py```.  The output should look something like:
 
 ```
 GPXPosterPrint started - processing configuration
-Registering typography layers...
+Registering fonts...
  -> Montserrat-Bold registered successfully.
  -> Inter-Regular registered successfully.
 Parsing 6.7MB GPX file...
