@@ -14,7 +14,7 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from pydantic import BaseModel, Field, FilePath, field_validator, conlist
+from pydantic import BaseModel, Field, FilePath, field_validator, conlist, ValidationError
 from pydantic_extra_types.color import Color
 from typing import List, Dict, Any, Literal
 
@@ -26,7 +26,7 @@ except ImportError:
     PYMUPDF_AVAILABLE = False
 
 class FilesModel(BaseModel):
-    # FilePath ensures the file path is a string AND the file actually exists
+    # FilePath ensures the file path is a string AND the GPX file actually exists
     gpx_filename: FilePath  
     output_pdf: str
 
@@ -53,6 +53,7 @@ class ThemeModel(BaseModel):
     metric_box_outline_colour: Color
     title_font_colour: Color
     date_font_colour: Color
+    route_line_colour: Color
     elevation_profile_colour: Color
     metric_value_colour: Color
     metric_title_colour: Color
@@ -117,12 +118,18 @@ def load_and_validate_poster_config(file_path: str):
         return validated_data
 
     except FileNotFoundError:
-        print(f"❌ File Error: The file at '{file_path}' could not be found.")
+        print(f"❌ Configuration file error: the file at '{file_path}' could not be found.")
+        sys.exit(1)
+    
     except tomllib.TOMLDecodeError as e:
-        print(f"❌ TOML Syntax Error: Your file has structural typos.\nDetails: {e}")
-    except Exception as e:
-        print(f"❌ Configuration Typo Detected:\n{e}")
-        return None
+        print(f"❌ TOML syntax error: Your file has structural typos.\nDetails: {e}")
+        sys.exit(1)
+
+    except ValidationError as e:
+        print(f"❌ Configuration file validation error:")
+        print("Please fix the following issues in config.toml:\n")
+        print(e)
+        sys.exit(1)
 
 def register_custom_fonts():
     # Registers fonts with fallback if not found
@@ -163,7 +170,7 @@ def parse_gpx(filepath, target_points):
     step = max(1, len(raw_points) // target_points)
     return raw_points[::step]
 
-def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, img_h, mapbox_style_id, mapbox_token):
+def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, img_h, mapbox_style_id, mapbox_token, line_color):
     #Fetches a map snapshot with the route pre-baked onto it by Mapbox servers
     
     # Static API dimensions must be integers and capped under 1280
@@ -173,7 +180,11 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
     coord_pairs = [(p[0], p[1]) for p in points]
     encoded_track = polyline.encode(coord_pairs, precision=5)
     safe_polyline = urllib.parse.quote(encoded_track)
-    path_styling = f"path-3+e65c00-1({safe_polyline})"
+
+    # Style of line / route on map
+    # path_styling = f"path-3+e65c00-1({safe_polyline})"
+    clean_line_color = line_color[1:]
+    path_styling = f"path-3+{clean_line_color}-1({safe_polyline})"
 
     # Start and finish coordinates for markers
     start_lon, start_lat = points[0][1], points[0][0]
@@ -405,7 +416,7 @@ def draw_poster():
     else: zoom = 11
 
     # Fetch map asset from Mapbox
-    img_stream = get_mapbox_overlay_map(points, center_lat, center_lon, zoom, map_w, map_h, config_data.mapbox.style_id, config_data.mapbox.access_token)
+    img_stream = get_mapbox_overlay_map(points, center_lat, center_lon, zoom, map_w, map_h, config_data.mapbox.style_id, config_data.mapbox.access_token, config_data.theme.route_line_colour.as_hex(format="long"))
     
     if img_stream is not None:
         img_reader = ImageReader(img_stream)
@@ -489,7 +500,7 @@ def draw_poster():
 
     c.showPage()
     c.save()
-    print(f"\nPDF poster compiled successfully at: {config_data.files.output_pdf}")
+    print(f"\n✅ PDF poster compiled successfully at: {config_data.files.output_pdf}")
 
     if PYMUPDF_AVAILABLE:
         print(f"Converting PDF to high-res PNG via PyMuPDF (300 DPI)...")
@@ -504,7 +515,7 @@ def draw_poster():
             # Render the vector structures to crisp raster pixels
             pix = page.get_pixmap(matrix=matrix)
             pix.save(OUTPUT_PNG)
-            print(f"🎉 Generated high-res PNG at: {OUTPUT_PNG}")
+            print(f"✅ Generated high-res PNG at: {OUTPUT_PNG}")
             doc.close()
         except Exception as e:
             print(f"⚠️ Image raster conversion failed: {e}")
