@@ -42,7 +42,11 @@ class ThemeModel(BaseModel):
     map_border: bool
     overlay_elevation: bool
     transparent_elevation_fill: bool
-    transparent_elevation_alpha: float
+    transparent_elevation_alpha: float = Field(
+            default=0.80, 
+            ge=0.0, 
+            le=1.0
+        )
     metrics_position: Literal["bottom","side"]
     title_position: Literal["left","centre","center"]
     page_background_colour: Color
