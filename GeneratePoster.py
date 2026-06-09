@@ -96,6 +96,7 @@ INTER_REGULAR_PATH = os.path.join(SCRIPT_DIR, "fonts", "Inter-Regular.ttf")
 
 CONFIG_FILE = "config.toml"
 
+# When running in Docker, the bind mount should be into ./data (input and output files)
 if os.path.exists("/app/data"):
     os.chdir("/app/data")
 

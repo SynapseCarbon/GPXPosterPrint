@@ -16,7 +16,7 @@ COPY GeneratePoster.py .
 COPY fonts/ ./fonts/
 
 # Link config.toml location to same folder as script (to allow a single Docker mount)
-RUN ln -s /app/data/config.toml /app/config.toml
+# RUN ln -s /app/data/config.toml /app/config.toml
 
 # Step 5: Command to run the script when the container starts
 CMD ["python", "/app/GeneratePoster.py"]
