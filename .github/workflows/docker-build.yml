@@ -16,21 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Step 1: Download code from GitHub onto the builder runner
-      # actions/checkout@v6.0.3 (Latest v6 release)
+      # actions/checkout@v6.0.2
       - name: Checkout code
-        uses: actions/checkout@1af3b93f4e2dbef7bb99f27914bfcb83aefc3332 # v6.0.3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       # Step 2: Log into Docker Hub account
-      # docker/login-action@v4.2.0 (Latest v4 release)
-      - name: Log in to Docker Hub
-        uses: docker/login-action@4907a6da5462943896b02008ebec949a3c9a622a # v4.2.0
+      # docker/login-action@v4.2.0
+      - name: Log in to Docker Hub 
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # docker/build-push-action@v7.0.0 (Latest v7 release)
+      # docker/build-push-action@v7.1.0
       - name: Build and Push Docker image
-        uses: docker/build-push-action@70b202fbff626fbef0be357a73fc5ccfdd37f075 # v7.0.0
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
         with:
           context: .
           file: ./Dockerfile
