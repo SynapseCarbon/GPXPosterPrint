@@ -81,7 +81,15 @@ class ConfigValidator(BaseModel):
     ride_metadata: RideMetadataModel
     theme: ThemeModel
 
-print(f"GPXPosterPrint started - processing configuration")
+print(f"GPXPosterPrint started")
+
+if len(sys.argv) > 1:
+    config_file = sys.argv[1]
+else:
+    # Fallback default configuration file
+    config_file = "config.toml"
+
+print(f"🔄 Initializing layout engine using profile: '{config_file}'")
 
 # =====================================================================
 # CONFIGURATION
@@ -95,8 +103,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MONTSERRAT_BOLD_PATH = os.path.join(SCRIPT_DIR, "fonts", "Montserrat-Bold.ttf")
 INTER_REGULAR_PATH = os.path.join(SCRIPT_DIR, "fonts", "Inter-Regular.ttf")
 
-CONFIG_FILE = "config.toml"
-
 # When running in Docker, the bind mount should be into ./data (input and output files)
 if os.path.exists("/app/data"):
     os.chdir("/app/data")
@@ -108,13 +114,13 @@ if os.path.exists("/app/data"):
 def load_and_validate_poster_config(file_path: str):
     try:
 
-        with open(CONFIG_FILE, "rb") as f:
+        with open(config_file, "rb") as f:
             raw_config = tomllib.load(f)
         
         # Parse and validate everything at once
         validated_data = ConfigValidator(**raw_config)
         
-        print("✅ Success: config.toml passed all structural checks!")
+        print("✅ Success: configuration file passed all structural checks!")
         return validated_data
 
     except FileNotFoundError:
@@ -233,7 +239,7 @@ def get_mapbox_overlay_map(points, center_lat, center_lon, zoom_level, img_w, im
             print(f"\n❌ Mapbox Engine Rejected Request (Status {response.status_code})")
             print(f"Error Message: {response.text}\n")
     except Exception as e:
-        print(f"Network asset retrieval failed: {e}")
+        print(f"Error accessing Mapbox: {e}")
     return None
 
 def build_elevation_profile(c,parsed_gpx,page_width,elevations,minimum_elevation, maximum_elevation, profile_x, profile_y, profile_height,profile_width):
@@ -291,7 +297,7 @@ def build_elevation_profile(c,parsed_gpx,page_width,elevations,minimum_elevation
 def draw_poster():
 
     # Load and validate the config file
-    config_data = load_and_validate_poster_config(CONFIG_FILE)
+    config_data = load_and_validate_poster_config(config_file)
 
     OUTPUT_PNG = os.path.splitext(config_data.files.output_pdf)[0] + ".png"
 
@@ -347,9 +353,10 @@ def draw_poster():
         map_h = max_top_y - render_y
 
         # Elevation Profile Bounds
-        prof_x = 20
+        prof_x = 15
         prof_y = 90
-        prof_w = width - 40
+        # prof_w = width - 15
+        prof_w = map_w
         prof_h = 80
 
         # Ride Typography Placement (Absolute Bottom)
@@ -388,9 +395,9 @@ def draw_poster():
         map_h = max_top_y - render_y
 
         # Elevation Profile Bounds
-        prof_x = 20
+        prof_x = map_padding
         prof_y = 160
-        prof_w = width - 40
+        prof_w = map_w
         prof_h = 80
 
         # Ride Typography Placement
@@ -467,7 +474,7 @@ def draw_poster():
 
     # Render metrics
     if config_data.theme.metrics_position == "side":
-        panel_fill = HexColor(config_data.theme.page_background_colour.as_hex(format="long")).clone(alpha=0.70)  # Let subtle map textures bleed through
+        panel_fill = HexColor(config_data.theme.page_background_colour.as_hex(format="long")).clone(alpha=0.80)  # Let subtle map textures bleed through
         c.setFillColor(panel_fill)
         c.setStrokeColor((HexColor(config_data.theme.metric_box_outline_colour.as_hex(format="long"))).clone(alpha=0.5))
         c.setLineWidth(1)
@@ -494,7 +501,7 @@ def draw_poster():
             c.setFont("Inter-Regular", 8)
             c.setFillColor(HexColor(config_data.theme.metric_title_colour.as_hex(format="long")))
             c.drawCentredString(m_x, m_y, item.label.upper())
-        c.setStrokeColor(HexColor(config_data.theme.bottom_line_colour_colour.as_hex(format="long")))
+        c.setStrokeColor(HexColor(config_data.theme.bottom_line_colour.as_hex(format="long")))
         c.setLineWidth(1.0)
         c.line(40, 88, width - 40, 88)
 
