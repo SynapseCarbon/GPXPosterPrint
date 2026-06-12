@@ -64,19 +64,27 @@ If everything is in the same folder (Python script, config.toml), you should be 
 
 ```py GeneratePoster.py```
 
+If you are producing a few posters at the same time, you can now specify the configuration file to use as a parameter.  If no filename is provided, config.toml is used as the default
+
+```py GeneratePoster.py myconfigfile.toml```
+
 The output should look something like:
 
 ```
-GPXPosterPrint started - processing configuration
+GPXPosterPrint started
+🔄 Initializing layout engine using profile: 'config.toml'
+✅ Success: configuration file passed all structural checks!
 Registering fonts...
  -> Montserrat-Bold registered successfully.
  -> Inter-Regular registered successfully.
-Parsing 6.7MB GPX file...
- -> Loop detected (58.9m gap). Rendering a single start/end marker.
-Success! Unified map tile asset rendered on layout plane.
+Parsing 16.7MB GPX file...
+ -> Loop detected (63.9m gap). Rendering a single start/end marker.
+Requesting map from Mapbox API
+ -> Success! Unified map tile asset rendered on layout plane.
 
-PDF poster compiled successfully at: Github Sample.pdf
+✅ PDF poster compiled successfully at: myposter.pdf
 Converting PDF to high-res PNG via PyMuPDF (300 DPI)...
+✅ Generated high-res PNG at: myposter.png
 ```
 
 At that point you've hopefully ended up with PDF and PNG files containing your poster ready to print.

@@ -18,15 +18,19 @@ style_id = "harpoon76/cmpch13vp004a01s59u1vg7br"
 #style_id = "mapbox/light-v11"
 
 [theme]
-# Set map_border to true for a border around the map
+# Print border around the map when true
 map_border = false
+# Overlay elevation chart on the bottom of the map when true
 overlay_elevation = true
+# If overlaying elevation chart, fill is transparent when true
 transparent_elevation_fill = true
+# Level of transparency for elevation fill (when both above are true)
 transparent_elevation_alpha = 0.80
-# metrics_position can be "side" or "bottom"
+# Metrics position can be "side" or "bottom"
 metrics_position = "side"
-# title position can be "left" or "centre" / "center"
+# Title position can be "left" or "centre" / "center"
 title_position = "left"
+# Colour choices
 page_background_colour = "#ffffff"
 metric_box_outline_colour = "#000000"
 title_font_colour = "#e65c00"
